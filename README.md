@@ -1,5 +1,3 @@
----
-
 # 🌿 EcoMind — AI Carbon Footprint Coach
 
 > Know your impact. Change your future.
