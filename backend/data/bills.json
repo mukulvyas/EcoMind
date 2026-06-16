@@ -1,0 +1,13 @@
+{
+  "dbff6ad3-6211-4ab3-b254-cc7f61eb3c85": [
+    {
+      "units": 10,
+      "period": "Current Cycle",
+      "amount": 1200,
+      "provider": "Unknown",
+      "bill_type": "food",
+      "co2_kg": 123.0,
+      "timestamp": "2026-06-16T16:43:31.077311"
+    }
+  ]
+}

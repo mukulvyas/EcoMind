@@ -44,6 +44,11 @@ export const getActionPlan = async (messages) => {
   return res.json();
 };
 
+export const fetchActiveActionPlan = async () => {
+  const res = await fetch(`${BASE_URL}/api/chat/action-plan/${getSessionId()}`);
+  return res.json();
+};
+
 export const uploadBill = async (file, billType) => {
   const form = new FormData();
   form.append("file", file);

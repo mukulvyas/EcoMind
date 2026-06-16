@@ -7,7 +7,7 @@ import PropTypes from 'prop-types'
 import AppHeader from '../components/AppHeader'
 import BottomNav from '../components/BottomNav'
 import { useFootprint } from '../hooks/useFootprint'
-import { getGovtData, sendChatMessage, getActionPlan } from '../services/api'
+import { getGovtData, sendChatMessage, getActionPlan, fetchActiveActionPlan } from '../services/api'
 import './AICoach.css'
 
 const QUICK_REPLIES = [
@@ -129,6 +129,18 @@ export default function AICoach() {
       showQuickReplies: true,
     }
     setMessages([greeting])
+
+    // Fetch active action plan on load
+    fetchActiveActionPlan().then(res => {
+      if (res.plan) {
+        try {
+          const planArray = typeof res.plan === 'string' ? JSON.parse(res.plan) : res.plan
+          if (Array.isArray(planArray) && planArray.length > 0) {
+            setActionPlan(planArray)
+          }
+        } catch(e) {}
+      }
+    }).catch(() => {})
   }, [])
 
   // Load govt data in background

@@ -14,12 +14,12 @@ def strip_json_fences(text: str) -> str:
     return text.strip()
 
 # Function 1: Chat with EcoMind
-async def chat_with_ecomind(messages: list, footprint: dict) -> str:
-    api_key = os.environ.get("GEMINI_API_KEY")
-    if not api_key or api_key == "AIza...":
-        return "Hello! I am EcoMind, your AI sustainability coach (running in local offline simulator mode). To reduce your emissions, consider using public transport and setting your air conditioner to 24-26°C."
-
+async def chat_with_ecomind(messages: list, footprint: dict = None, historical_chat: list = None, active_plan: str = None) -> str:
     try:
+        api_key = os.getenv("GEMINI_API_KEY")
+        if not api_key:
+            return "Configuration error: API key missing."
+            
         genai.configure(api_key=api_key)
         
         system_instruction = (
@@ -33,8 +33,23 @@ async def chat_with_ecomind(messages: list, footprint: dict) -> str:
             "- If asked for a plan, give max 5 actions, one line each"
         )
         
+        # Build RAG Context
+        context_parts = []
+        if footprint:
+            context_parts.append(f"Current Footprint: {footprint}")
+            
+        if active_plan:
+            context_parts.append(f"User's current 30-day action plan:\n{active_plan}")
+            
+        if historical_chat:
+            history_summary = " ".join([m.get('content', '') for m in historical_chat[-5:]])
+            context_parts.append(f"Recent context: {history_summary}")
+            
+        if context_parts:
+            system_instruction += "\n\nUser Context:\n" + "\n".join(context_parts)
+            
         model = genai.GenerativeModel(
-            model_name="gemini-flash-latest",
+            model_name="gemini-1.5-flash",
             system_instruction=system_instruction
         )
         
