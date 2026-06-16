@@ -1,0 +1,4 @@
+This is a simulated bill receipt.
+Provider: DMart
+Total: Rs. 2450
+Items: 14 items
