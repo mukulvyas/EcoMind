@@ -25,6 +25,15 @@ class FootprintResult(BaseModel):
 
 @router.post("/calculate")
 async def calculate_footprint(data: FootprintInput):
+    """
+    A brief description of calculate_footprint.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     # Carbon calculation logic (India-specific factors)
     travel = (data.car_km / 1000) * 0.192 * 52 + data.flights * 0.255
     food_map = {"vegan": 0.5, "vegetarian": 0.7, "mixed": 1.2, "meat-heavy": 1.8}
@@ -53,5 +62,14 @@ async def calculate_footprint(data: FootprintInput):
 
 @router.get("/history/{session_id}")
 async def get_history(session_id: str):
+    """
+    A brief description of get_history.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     entries = await get_footprint_history(session_id)
     return entries

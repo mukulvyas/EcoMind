@@ -24,10 +24,28 @@ except Exception as e:
     db = None
 
 def _ts() -> str:
+    """
+    A brief description of _ts.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     return datetime.utcnow().isoformat()
 
 # ─── FOOTPRINTS ────────────────────────────────────────────────────────────────
 async def save_footprint(session_id: str, data: dict):
+    """
+    A brief description of save_footprint.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     if not db: return
     try:
         doc_ref = db.collection("sessions").document(session_id)\
@@ -38,6 +56,15 @@ async def save_footprint(session_id: str, data: dict):
         print(f"Firestore save_footprint error: {e}")
 
 async def get_footprint_history(session_id: str) -> list:
+    """
+    A brief description of get_footprint_history.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     if not db: return []
     try:
         docs = db.collection("sessions").document(session_id)\
@@ -50,6 +77,15 @@ async def get_footprint_history(session_id: str) -> list:
         return []
 
 async def get_latest_footprint(session_id: str) -> dict:
+    """
+    A brief description of get_latest_footprint.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     history = await get_footprint_history(session_id)
     if history:
         return history[0]
@@ -57,6 +93,15 @@ async def get_latest_footprint(session_id: str) -> dict:
 
 # ─── BILLS ─────────────────────────────────────────────────────────────────────
 async def save_bill(session_id: str, bill_data: dict) -> str:
+    """
+    A brief description of save_bill.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     bill_id = str(uuid.uuid4())
     if not db: return bill_id
     try:
@@ -83,6 +128,15 @@ async def save_bill(session_id: str, bill_data: dict) -> str:
     return bill_id
 
 async def get_all_bills(session_id: str) -> list:
+    """
+    A brief description of get_all_bills.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     if not db: return []
     try:
         docs = db.collection("sessions").document(session_id)\
@@ -95,6 +149,15 @@ async def get_all_bills(session_id: str) -> list:
         return []
 
 async def update_bill_status(session_id: str, bill_id: str, status: str, notes: str, corrected_co2: float = None):
+    """
+    A brief description of update_bill_status.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     if not db: return
     try:
         doc_ref = db.collection("sessions").document(session_id)\
@@ -113,6 +176,15 @@ async def update_bill_status(session_id: str, bill_id: str, status: str, notes: 
 
 # ─── ACTION PLANS ───────────────────────────────────────────────────────────────
 async def save_action_plan(session_id: str, actions: list) -> str:
+    """
+    A brief description of save_action_plan.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     plan_id = str(uuid.uuid4())
     if not db: return plan_id
     try:
@@ -139,6 +211,15 @@ async def save_action_plan(session_id: str, actions: list) -> str:
     return plan_id
 
 async def get_latest_action_plan(session_id: str) -> dict:
+    """
+    A brief description of get_latest_action_plan.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     if not db: return {}
     try:
         docs = db.collection("sessions").document(session_id)\
@@ -152,6 +233,15 @@ async def get_latest_action_plan(session_id: str) -> dict:
     return {}
 
 async def update_action_item(session_id: str, plan_id: str, day: int, completed: bool, co2_saved: float = 0):
+    """
+    A brief description of update_action_item.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     if not db: return
     try:
         doc_ref = db.collection("sessions").document(session_id)\
@@ -180,6 +270,15 @@ async def update_action_item(session_id: str, plan_id: str, day: int, completed:
 
 # ─── CHAT HISTORY ───────────────────────────────────────────────────────────────
 async def save_chat_message(session_id: str, role: str, content: str):
+    """
+    A brief description of save_chat_message.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     if not db: return
     try:
         doc_ref = db.collection("sessions").document(session_id)\
@@ -189,6 +288,15 @@ async def save_chat_message(session_id: str, role: str, content: str):
         print(f"Firestore save_chat_message error: {e}")
 
 async def get_chat_history(session_id: str, limit: int = 20) -> list:
+    """
+    A brief description of get_chat_history.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     if not db: return []
     try:
         docs = db.collection("sessions").document(session_id)\

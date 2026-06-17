@@ -4,6 +4,15 @@ import google.generativeai as genai
 
 # Helper to strip markdown JSON fences
 def strip_json_fences(text: str) -> str:
+    """
+    A brief description of strip_json_fences.
+    Args:
+        ...
+    Returns:
+        ...
+    Raises:
+        ...
+    """
     text = text.strip()
     if text.startswith("```json"):
         text = text[7:]
@@ -15,6 +24,22 @@ def strip_json_fences(text: str) -> str:
 
 # Function 1: Chat with EcoMind
 async def chat_with_ecomind(messages: list, footprint: dict = None, historical_chat: list = None, active_plan: dict = None, recent_bills: list = None) -> str:
+    """
+    Chat with the EcoMind AI Coach using context-aware RAG.
+    
+    Args:
+        messages: list of message dictionaries
+        footprint: user's carbon footprint data
+        historical_chat: previous chat history
+        active_plan: the user's active reduction plan
+        recent_bills: list of recent bills
+        
+    Returns:
+        str: AI response text
+        
+    Raises:
+        Exception: when Gemini fails
+    """
     try:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
@@ -116,6 +141,20 @@ async def chat_with_ecomind(messages: list, footprint: dict = None, historical_c
 
 # Function 2: Analyze Bill Image
 async def analyze_bill_image(image_bytes: bytes, filename: str, bill_type: str) -> dict:
+    """
+    Analyze a bill image to extract carbon footprint data.
+    
+    Args:
+        image_bytes: raw image bytes
+        filename: name of the uploaded file
+        bill_type: category of bill ('electricity', 'food', etc)
+        
+    Returns:
+        dict: extracted bill data and CO2 impact
+        
+    Raises:
+        Exception: when Gemini fails
+    """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key or api_key == "AIza...":
         # Simulation fallback
@@ -191,6 +230,18 @@ Return ONLY raw JSON. Do not include markdown fences, backticks, or other text.
 
 # Function 3: Generate Action Plan
 async def generate_action_plan(footprint: dict) -> list:
+    """
+    Generate a 30-day carbon reduction action plan.
+    
+    Args:
+        footprint: user's carbon footprint data
+        
+    Returns:
+        list: 30 daily action items
+        
+    Raises:
+        Exception: when Gemini fails
+    """
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key or api_key == "AIza...":
         # Simulation fallback

@@ -71,7 +71,18 @@ FUEL_PRICES = {
 
 
 def _aqi_color_label(aqi: int) -> tuple[str, str]:
-    """Return (color, label) based on AQI value."""
+    """
+    Return (color, label) based on AQI value.
+    
+    Args:
+        aqi: int AQI value
+        
+    Returns:
+        tuple: (color string, label string)
+        
+    Raises:
+        Exception: none
+    """
     if aqi < 50:
         return "green", "Good"
     if aqi < 100:
@@ -85,7 +96,18 @@ def _aqi_color_label(aqi: int) -> tuple[str, str]:
 
 # ─── get_grid_emission_factor ──────────────────────────────────────────────
 async def get_grid_emission_factor(state: str) -> dict:
-    """Return CEA state-wise grid emission factor (kg CO₂/kWh)."""
+    """
+    Return CEA state-wise grid emission factor (kg CO₂/kWh).
+    
+    Args:
+        state: string state name
+        
+    Returns:
+        dict: grid emission factor data
+        
+    Raises:
+        Exception: none
+    """
     factor = GRID_FACTORS.get(state, GRID_FACTORS["Default"])
     return {
         "state": state,
@@ -98,7 +120,18 @@ async def get_grid_emission_factor(state: str) -> dict:
 
 # ─── get_air_quality ───────────────────────────────────────────────────────
 async def get_air_quality(city: str) -> dict:
-    """Return CPCB hardcoded AQI data with color coding."""
+    """
+    Return CPCB hardcoded AQI data with color coding.
+    
+    Args:
+        city: string city name
+        
+    Returns:
+        dict: air quality data and health tips
+        
+    Raises:
+        Exception: none
+    """
     data = AQI_DATA.get(city, AQI_DATA["Default"])
     aqi_val = data["aqi"]
     color, label = _aqi_color_label(aqi_val)
@@ -127,7 +160,18 @@ async def get_air_quality(city: str) -> dict:
 
 # ─── get_weather_carbon_tip ────────────────────────────────────────────────
 async def get_weather_carbon_tip(city: str) -> dict:
-    """Fetch live weather from Open-Meteo (free, no key needed)."""
+    """
+    Fetch live weather from Open-Meteo (free, no key needed).
+    
+    Args:
+        city: string city name
+        
+    Returns:
+        dict: weather data and carbon saving tips
+        
+    Raises:
+        Exception: when Open-Meteo API fails
+    """
     lat, lon = CITY_COORDS.get(city, CITY_COORDS["Default"])
     try:
         async with httpx.AsyncClient(timeout=6) as client:
@@ -189,7 +233,18 @@ async def get_weather_carbon_tip(city: str) -> dict:
 
 # ─── get_national_budget ───────────────────────────────────────────────────
 async def get_national_budget() -> dict:
-    """Return MoEFCC NDC 2023 national emissions & Paris target data."""
+    """
+    Return MoEFCC NDC 2023 national emissions & Paris target data.
+    
+    Args:
+        None
+        
+    Returns:
+        dict: national emission budget data
+        
+    Raises:
+        Exception: none
+    """
     return {
         "india_per_capita_co2_2023": 1.9,
         "india_total_emissions_2023": 2.9,
@@ -208,7 +263,18 @@ async def get_national_budget() -> dict:
 
 # ─── get_petroleum_data ────────────────────────────────────────────────────
 async def get_petroleum_data() -> dict:
-    """Return PPAC Monthly Report May 2024 petroleum & carbon data."""
+    """
+    Return PPAC Monthly Report May 2024 petroleum & carbon data.
+    
+    Args:
+        None
+        
+    Returns:
+        dict: petroleum consumption data
+        
+    Raises:
+        Exception: none
+    """
     return {
         "crude_processed_mmt": 21.4,
         "period": "May 2024",
@@ -228,7 +294,18 @@ async def get_petroleum_data() -> dict:
 
 # ─── get_fuel_prices ───────────────────────────────────────────────────────
 async def get_fuel_prices(city: str) -> dict:
-    """Return PPAC June 2024 retail fuel prices for Indian cities."""
+    """
+    Return PPAC June 2024 retail fuel prices for Indian cities.
+    
+    Args:
+        city: string city name
+        
+    Returns:
+        dict: fuel prices and carbon factors
+        
+    Raises:
+        Exception: none
+    """
     prices = FUEL_PRICES.get(city, FUEL_PRICES["Default"])
     petrol = prices["petrol"]
     # Cost saved per 10 km avoided (assuming ~12 km/L fuel efficiency)

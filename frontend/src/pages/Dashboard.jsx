@@ -17,6 +17,7 @@ import { useFootprint } from '../hooks/useFootprint'
 import { formatShortDate, formatCO2 } from '../utils/formatters'
 import { calculateVsAverage } from '../utils/carbonCalculations'
 import { fetchActiveActionPlan, toggleActionItem } from '../services/api'
+import { useAuth } from '../hooks/useAuth'
 import './Dashboard.css'
 import '../components/BillUploadModal.css'
 import '../components/GovtDataCard.css'
@@ -86,7 +87,8 @@ HistoryCard.propTypes = {
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const userProfile = { displayName: 'Eco Citizen', photoURL: null }
+  const { user, signInWithGoogle, signOut, isAnonymous } = useAuth()
+  const userProfile = user ? { displayName: user.displayName, photoURL: user.photoURL } : { displayName: 'Eco Citizen', photoURL: null }
   const { footprints, latestFootprint, loading: footprintLoading } = useFootprint()
 
   const [period, setPeriod] = useState('Quarter')
@@ -221,6 +223,15 @@ export default function Dashboard() {
             <Database size={16} />
             <span>My Data</span>
           </button>
+          {isAnonymous ? (
+            <button onClick={signInWithGoogle} className="btn btn-outline" style={{ padding: '4px 10px', fontSize: 12, display: 'flex', gap: 4, alignItems: 'center' }}>
+              <span role="img" aria-label="google">G</span> Sign in
+            </button>
+          ) : (
+            <button onClick={signOut} className="btn btn-outline" style={{ padding: '4px 10px', fontSize: 12 }}>
+              Sign out
+            </button>
+          )}
           {userProfile?.photoURL ? (
             <img
               src={userProfile.photoURL}
@@ -238,7 +249,10 @@ export default function Dashboard() {
 
       <div className="page-content">
         <section className="dash-top">
-          <h1 className="dash-title">Earth Guardian Dashboard</h1>
+          <h1 className="dash-title">
+            Earth Guardian Dashboard
+            {!isAnonymous && <span style={{ marginLeft: 6, color: '#1D9E75', fontSize: 18 }} title="Verified Google Account">✓</span>}
+          </h1>
           <p className="dash-sub">
             Welcome back{userProfile?.displayName ? `, ${userProfile.displayName.split(' ')[0]}` : ''}. 
             {' '}Your efforts have saved <strong>12kg</strong> of CO₂ this week.
