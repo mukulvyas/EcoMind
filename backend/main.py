@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 import os
 import uuid
 import time
+import re
 
 # Load environment variables
 load_dotenv()
@@ -13,19 +14,70 @@ from routers import footprint, bills, ai_coach, govt_data
 
 app = FastAPI(title="EcoMind API")
 
-ALLOWED_ORIGINS = [
+# Build allowed origins — always include localhost and any Cloud Run URLs via env
+_FRONTEND_URL = os.getenv("FRONTEND_URL", "")
+ALLOWED_ORIGINS = list(filter(None, [
     "http://localhost:5173",
     "http://localhost:3000",
-    os.getenv("FRONTEND_URL", "http://localhost:5173")
-]
+    _FRONTEND_URL,
+]))
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=ALLOWED_ORIGINS,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PATCH", "DELETE"],
-    allow_headers=["Content-Type", "Authorization", "X-Session-ID"],
-)
+def _is_allowed_origin(origin: str) -> bool:
+    """Return True if the origin is explicitly allowed or is any *.run.app domain."""
+    if origin in ALLOWED_ORIGINS:
+        return True
+    # Allow all Cloud Run domains (*.run.app) for hackathon flexibility
+    if re.match(r"https://[\w-]+\.run\.app$", origin):
+        return True
+    return False
+
+class DynamicCORSMiddleware:
+    """CORS middleware that dynamically allows *.run.app origins."""
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            headers = dict(scope.get("headers", []))
+            origin = headers.get(b"origin", b"").decode()
+
+            if scope["method"] == "OPTIONS" and origin:
+                # Handle preflight
+                allow = _is_allowed_origin(origin)
+                response_headers = [
+                    (b"access-control-allow-origin", origin.encode() if allow else b""),
+                    (b"access-control-allow-methods", b"GET, POST, PATCH, DELETE, OPTIONS"),
+                    (b"access-control-allow-headers", b"Content-Type, Authorization, X-Session-ID"),
+                    (b"access-control-allow-credentials", b"true"),
+                    (b"access-control-max-age", b"600"),
+                    (b"content-length", b"0"),
+                ]
+                await send({
+                    "type": "http.response.start",
+                    "status": 204,
+                    "headers": response_headers,
+                })
+                await send({"type": "http.response.body", "body": b""})
+                return
+
+            # For actual requests, inject CORS header into response
+            if origin and _is_allowed_origin(origin):
+                origin_bytes = origin.encode()
+
+                async def send_with_cors(message):
+                    if message["type"] == "http.response.start":
+                        headers_list = list(message.get("headers", []))
+                        headers_list.append((b"access-control-allow-origin", origin_bytes))
+                        headers_list.append((b"access-control-allow-credentials", b"true"))
+                        message = {**message, "headers": headers_list}
+                    await send(message)
+
+                await self.app(scope, receive, send_with_cors)
+                return
+
+        await self.app(scope, receive, send)
+
+app.add_middleware(DynamicCORSMiddleware)
 
 def is_valid_uuid(value) -> bool:
     try:
