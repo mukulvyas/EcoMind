@@ -314,7 +314,7 @@ export default function Dashboard() {
         </div>
       } />
 
-      <div className="page-content">
+      <div className="page-content" id="main-content">
         <section className="dash-top">
           <h1 className="dash-title">
             Earth Guardian Dashboard
@@ -433,7 +433,12 @@ export default function Dashboard() {
           )}
 
           {/* Trend Chart */}
-          <div className="card chart-card animate-fade-up" style={{ animationDelay: '0.2s' }}>
+          <div
+            className="card chart-card animate-fade-up"
+            style={{ animationDelay: '0.2s' }}
+            role="img"
+            aria-label={`Footprint trend chart showing CO₂ emissions over ${chartData.length} periods`}
+          >
             <div className="chart-header">
               <div>
                 <h3 className="chart-title">Footprint Trend</h3>
@@ -483,7 +488,12 @@ export default function Dashboard() {
           </div>
 
           {/* Donut Chart */}
-          <div className="card chart-card animate-fade-up" style={{ animationDelay: '0.25s' }}>
+          <div
+            className="card chart-card animate-fade-up"
+            style={{ animationDelay: '0.25s' }}
+            role="img"
+            aria-label={`Category split chart: Transport ${donutData[0]?.value ?? 42}%, Home Energy ${donutData[1]?.value ?? 31}%, Food ${donutData[2]?.value ?? 27}%`}
+          >
             <h3 className="chart-title">Category Split</h3>
             <p className="chart-sub">Carbon source distribution</p>
             <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginTop: 12 }}>

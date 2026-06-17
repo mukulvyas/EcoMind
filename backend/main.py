@@ -69,6 +69,9 @@ class DynamicCORSMiddleware:
                         headers_list = list(message.get("headers", []))
                         headers_list.append((b"access-control-allow-origin", origin_bytes))
                         headers_list.append((b"access-control-allow-credentials", b"true"))
+                        headers_list.append((b"x-content-type-options", b"nosniff"))
+                        headers_list.append((b"x-frame-options", b"DENY"))
+                        headers_list.append((b"x-xss-protection", b"1; mode=block"))
                         message = {**message, "headers": headers_list}
                     await send(message)
 

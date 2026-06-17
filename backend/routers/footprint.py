@@ -26,13 +26,16 @@ class FootprintResult(BaseModel):
 @router.post("/calculate")
 async def calculate_footprint(data: FootprintInput):
     """
-    A brief description of calculate_footprint.
+    Calculate the user's annual carbon footprint using India-specific emission factors.
+
     Args:
-        ...
+        data: FootprintInput containing travel, diet, energy, and shopping inputs.
+
     Returns:
-        ...
+        dict: Breakdown of CO₂ emissions by category (tonnes/year) and total.
+
     Raises:
-        ...
+        HTTPException: If Firestore save fails (handled gracefully, does not raise).
     """
     # Carbon calculation logic (India-specific factors)
     travel = (data.car_km / 1000) * 0.192 * 52 + data.flights * 0.255
@@ -63,13 +66,16 @@ async def calculate_footprint(data: FootprintInput):
 @router.get("/history/{session_id}")
 async def get_history(session_id: str):
     """
-    A brief description of get_history.
+    Retrieve the carbon footprint history for a given session.
+
     Args:
-        ...
+        session_id: UUID identifying the user's browser session.
+
     Returns:
-        ...
+        list: Up to 8 most recent footprint entries, ordered newest-first.
+
     Raises:
-        ...
+        HTTPException: If Firestore read fails (handled gracefully, returns empty list).
     """
     entries = await get_footprint_history(session_id)
     return entries

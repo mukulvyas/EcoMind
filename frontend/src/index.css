@@ -404,3 +404,27 @@ body {
   50% { opacity: 0.7; transform: scale(0.95); }
 }
 
+/* =============================================
+   ACCESSIBILITY
+   ============================================= */
+
+/* Respect user's reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Focus visible styles for keyboard navigation */
+:focus-visible {
+  outline: 3px solid var(--primary);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* High contrast text for readability */
+.metric-value {
+  color: var(--on-surface);
+}

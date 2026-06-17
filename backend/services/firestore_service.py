@@ -26,29 +26,24 @@ except Exception as e:
     print("[Firestore]    Set FIREBASE_SERVICE_ACCOUNT_KEY env var on Cloud Run to fix this.")
     db = None
 
-
 def _ts() -> str:
-    """
-    A brief description of _ts.
-    Args:
-        ...
-    Returns:
-        ...
-    Raises:
-        ...
-    """
+    """Return the current UTC timestamp as an ISO 8601 string."""
     return datetime.utcnow().isoformat()
 
 # ─── FOOTPRINTS ────────────────────────────────────────────────────────────────
 async def save_footprint(session_id: str, data: dict):
     """
-    A brief description of save_footprint.
+    Persist a calculated carbon footprint entry to Firestore.
+
     Args:
-        ...
+        session_id: UUID of the user session (used as document path).
+        data: Dict containing total_co2, travel, food, energy, shopping, timestamp.
+
     Returns:
-        ...
+        None. Silently skips if Firestore is unavailable.
+
     Raises:
-        ...
+        Exception: Caught internally; error is logged but not re-raised.
     """
     if not db: return
     try:
@@ -61,13 +56,16 @@ async def save_footprint(session_id: str, data: dict):
 
 async def get_footprint_history(session_id: str) -> list:
     """
-    A brief description of get_footprint_history.
+    Retrieve the most recent footprint entries for a session.
+
     Args:
-        ...
+        session_id: UUID of the user session.
+
     Returns:
-        ...
+        list: Up to 8 footprint dicts ordered newest-first. Empty list if unavailable.
+
     Raises:
-        ...
+        Exception: Caught internally; error is logged and empty list returned.
     """
     if not db: return []
     try:
@@ -82,13 +80,16 @@ async def get_footprint_history(session_id: str) -> list:
 
 async def get_latest_footprint(session_id: str) -> dict:
     """
-    A brief description of get_latest_footprint.
+    Get the single most recent footprint for a session.
+
     Args:
-        ...
+        session_id: UUID of the user session.
+
     Returns:
-        ...
+        dict: The most recent footprint, or a safe default if none exists.
+
     Raises:
-        ...
+        Exception: Caught internally via get_footprint_history.
     """
     history = await get_footprint_history(session_id)
     if history:
@@ -98,13 +99,18 @@ async def get_latest_footprint(session_id: str) -> dict:
 # ─── BILLS ─────────────────────────────────────────────────────────────────────
 async def save_bill(session_id: str, bill_data: dict) -> str:
     """
-    A brief description of save_bill.
+    Save an uploaded utility bill to Firestore with status 'pending'.
+
     Args:
-        ...
+        session_id: UUID of the user session.
+        bill_data: Dict containing bill_type, filename, units, period, amount,
+                   provider, co2_kg.
+
     Returns:
-        ...
+        str: The generated bill_id (UUID). Returned even if Firestore is unavailable.
+
     Raises:
-        ...
+        Exception: Caught internally; error is logged but bill_id is still returned.
     """
     bill_id = str(uuid.uuid4())
     if not db: return bill_id
@@ -133,13 +139,16 @@ async def save_bill(session_id: str, bill_data: dict) -> str:
 
 async def get_all_bills(session_id: str) -> list:
     """
-    A brief description of get_all_bills.
+    Retrieve all bills for a session, ordered newest-first.
+
     Args:
-        ...
+        session_id: UUID of the user session.
+
     Returns:
-        ...
+        list: All bill dicts for the session. Empty list if unavailable.
+
     Raises:
-        ...
+        Exception: Caught internally; error is logged and empty list returned.
     """
     if not db: return []
     try:
@@ -154,13 +163,20 @@ async def get_all_bills(session_id: str) -> list:
 
 async def update_bill_status(session_id: str, bill_id: str, status: str, notes: str, corrected_co2: float = None):
     """
-    A brief description of update_bill_status.
+    Update the verification status of a saved bill.
+
     Args:
-        ...
+        session_id: UUID of the user session.
+        bill_id: UUID of the specific bill document.
+        status: New status string — 'verified', 'suspicious', or 'failed'.
+        notes: Human-readable verification notes.
+        corrected_co2: Corrected CO₂ value in kg, or None to keep existing.
+
     Returns:
-        ...
+        None. Silently skips if Firestore is unavailable.
+
     Raises:
-        ...
+        Exception: Caught internally; error is logged but not re-raised.
     """
     if not db: return
     try:
@@ -181,13 +197,18 @@ async def update_bill_status(session_id: str, bill_id: str, status: str, notes: 
 # ─── ACTION PLANS ───────────────────────────────────────────────────────────────
 async def save_action_plan(session_id: str, actions: list) -> str:
     """
-    A brief description of save_action_plan.
+    Persist a newly generated 30-day action plan to Firestore.
+
     Args:
-        ...
+        session_id: UUID of the user session.
+        actions: List of action dicts, each with day, action, category,
+                 co2_saving_kg, difficulty.
+
     Returns:
-        ...
+        str: The generated plan_id (UUID).
+
     Raises:
-        ...
+        Exception: Caught internally; error is logged but plan_id is still returned.
     """
     plan_id = str(uuid.uuid4())
     if not db: return plan_id
@@ -216,13 +237,16 @@ async def save_action_plan(session_id: str, actions: list) -> str:
 
 async def get_latest_action_plan(session_id: str) -> dict:
     """
-    A brief description of get_latest_action_plan.
+    Fetch the most recently created action plan for a session.
+
     Args:
-        ...
+        session_id: UUID of the user session.
+
     Returns:
-        ...
+        dict: The latest action plan, or empty dict if none exists.
+
     Raises:
-        ...
+        Exception: Caught internally; error is logged and empty dict returned.
     """
     if not db: return {}
     try:
@@ -238,13 +262,20 @@ async def get_latest_action_plan(session_id: str) -> dict:
 
 async def update_action_item(session_id: str, plan_id: str, day: int, completed: bool, co2_saved: float = 0):
     """
-    A brief description of update_action_item.
+    Mark a single day's action as completed or uncompleted and recalculate totals.
+
     Args:
-        ...
+        session_id: UUID of the user session.
+        plan_id: UUID of the action plan document.
+        day: The day number (1–30) to update.
+        completed: True to mark complete, False to unmark.
+        co2_saved: CO₂ saved in kg for this action (used for recalculation).
+
     Returns:
-        ...
+        None. Silently skips if Firestore is unavailable or plan not found.
+
     Raises:
-        ...
+        Exception: Caught internally; error is logged but not re-raised.
     """
     if not db: return
     try:
@@ -275,13 +306,18 @@ async def update_action_item(session_id: str, plan_id: str, day: int, completed:
 # ─── CHAT HISTORY ───────────────────────────────────────────────────────────────
 async def save_chat_message(session_id: str, role: str, content: str):
     """
-    A brief description of save_chat_message.
+    Append a single chat message to the session's chat history in Firestore.
+
     Args:
-        ...
+        session_id: UUID of the user session.
+        role: Speaker role — 'user' or 'assistant'.
+        content: The text content of the message.
+
     Returns:
-        ...
+        None. Silently skips if Firestore is unavailable.
+
     Raises:
-        ...
+        Exception: Caught internally; error is logged but not re-raised.
     """
     if not db: return
     try:
@@ -293,13 +329,18 @@ async def save_chat_message(session_id: str, role: str, content: str):
 
 async def get_chat_history(session_id: str, limit: int = 20) -> list:
     """
-    A brief description of get_chat_history.
+    Retrieve the most recent chat messages for a session, in chronological order.
+
     Args:
-        ...
+        session_id: UUID of the user session.
+        limit: Maximum number of messages to return (default 20).
+
     Returns:
-        ...
+        list: Chat message dicts with role, content, created_at — oldest first.
+              Empty list if Firestore is unavailable.
+
     Raises:
-        ...
+        Exception: Caught internally; error is logged and empty list returned.
     """
     if not db: return []
     try:
