@@ -37,7 +37,9 @@ function BillsTab({ sessionId }) {
 
   useEffect(() => {
     setLoading(true)
-    fetch(`${API}/api/bills/all/${sessionId}`)
+    fetch(`${API}/api/bills/all/${sessionId}`, {
+      headers: { 'X-Session-ID': sessionId }
+    })
       .then(r => r.json())
       .then(data => setBills(data.bills || []))
       .catch(() => {})
@@ -93,7 +95,9 @@ function ActionPlanTab({ sessionId }) {
 
   const fetchPlan = useCallback(() => {
     setLoading(true)
-    fetch(`${API}/api/chat/action-plan/${sessionId}`)
+    fetch(`${API}/api/chat/action-plan/${sessionId}`, {
+      headers: { 'X-Session-ID': sessionId }
+    })
       .then(r => r.json())
       .then(data => setPlan(data.plan || null))
       .catch(() => {})
@@ -121,7 +125,10 @@ function ActionPlanTab({ sessionId }) {
         `${API}/api/chat/action/${sessionId}/${plan.plan_id}/${action.day}`,
         {
           method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'X-Session-ID': sessionId
+          },
           body: JSON.stringify({ completed, user_claim: claim })
         }
       )
@@ -236,7 +243,9 @@ function HistoryTab({ sessionId }) {
 
   useEffect(() => {
     setLoading(true)
-    fetch(`${API}/api/footprint/history/${sessionId}`)
+    fetch(`${API}/api/footprint/history/${sessionId}`, {
+      headers: { 'X-Session-ID': sessionId }
+    })
       .then(r => r.json())
       .then(data => setHistory(Array.isArray(data) ? data : data.history || []))
       .catch(() => {})

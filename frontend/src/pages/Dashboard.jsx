@@ -96,6 +96,7 @@ export default function Dashboard() {
   const [showHistory, setShowHistory] = useState(false)
   const [showBillModal, setShowBillModal] = useState(false)
   const [showMyUploads, setShowMyUploads] = useState(false)
+  const [showAuthMenu, setShowAuthMenu] = useState(false)
 
   const [dbPlan, setDbPlan] = useState(null)
   const [claiming, setClaiming] = useState(null)
@@ -223,27 +224,93 @@ export default function Dashboard() {
             <Database size={16} />
             <span>My Data</span>
           </button>
-          {isAnonymous ? (
-            <button onClick={signInWithGoogle} className="btn btn-outline" style={{ padding: '4px 10px', fontSize: 12, display: 'flex', gap: 4, alignItems: 'center' }}>
-              <span role="img" aria-label="google">G</span> Sign in
-            </button>
-          ) : (
-            <button onClick={signOut} className="btn btn-outline" style={{ padding: '4px 10px', fontSize: 12 }}>
-              Sign out
-            </button>
-          )}
-          {userProfile?.photoURL ? (
-            <img
-              src={userProfile.photoURL}
-              alt={userProfile.displayName ?? 'User avatar'}
-              className="dash-avatar-img"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="dash-avatar" aria-label="User profile">
-              <span style={{ fontSize: 18 }}>👤</span>
+          
+          <div style={{ position: 'relative' }}>
+            <div 
+              onClick={() => setShowAuthMenu(prev => !prev)} 
+              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+              aria-label="User menu"
+            >
+              {userProfile?.photoURL ? (
+                <img
+                  src={userProfile.photoURL}
+                  alt={userProfile.displayName ?? 'User avatar'}
+                  className="dash-avatar-img"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="dash-avatar" aria-label="User profile">
+                  <span style={{ fontSize: 18 }}>👤</span>
+                </div>
+              )}
             </div>
-          )}
+
+            {showAuthMenu && (
+              <>
+                <div 
+                  style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 99 }} 
+                  onClick={() => setShowAuthMenu(false)}
+                />
+                <div className="auth-dropdown animate-fade-up" style={{
+                  position: 'absolute',
+                  top: '120%',
+                  right: 0,
+                  background: 'var(--surface)',
+                  borderRadius: '12px',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                  minWidth: '220px',
+                  zIndex: 100,
+                  padding: '12px',
+                  border: '1px solid var(--outline-variant)'
+                }}>
+                  {isAnonymous ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ fontWeight: '500', color: 'var(--on-surface)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <span>👤</span> Anonymous User
+                      </div>
+                      <hr style={{ border: 'none', borderTop: '1px solid var(--outline-variant)', margin: '4px 0' }} />
+                      <button 
+                        onClick={() => { signInWithGoogle(); setShowAuthMenu(false); }} 
+                        className="btn btn-outline" 
+                        style={{ display: 'flex', gap: '6px', alignItems: 'center', justifyContent: 'center', width: '100%', padding: '8px' }}
+                      >
+                        <span role="img" aria-label="google">G</span> Sign in with Google
+                      </button>
+                      <div style={{ fontSize: '11px', color: 'var(--on-surface-variant)', textAlign: 'center' }}>
+                        Sync your data across devices
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {userProfile?.photoURL ? (
+                          <img src={userProfile.photoURL} style={{ width: 36, height: 36, borderRadius: '50%' }} alt="profile" />
+                        ) : (
+                          <div style={{ width: 36, height: 36, borderRadius: '50%', background: 'var(--primary-container)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16 }}>👤</div>
+                        )}
+                        <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                          <span style={{ fontWeight: '500', fontSize: '14px', color: 'var(--on-surface)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                            {userProfile?.displayName}
+                          </span>
+                          <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)', whiteSpace: 'nowrap', textOverflow: 'ellipsis', overflow: 'hidden' }}>
+                            {user?.email || 'user@gmail.com'}
+                          </span>
+                        </div>
+                      </div>
+                      <hr style={{ border: 'none', borderTop: '1px solid var(--outline-variant)', margin: '4px 0' }} />
+                      <button 
+                        onClick={() => { signOut(); setShowAuthMenu(false); }} 
+                        className="btn btn-outline" 
+                        style={{ width: '100%', padding: '8px' }}
+                      >
+                        Sign out
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       } />
 
