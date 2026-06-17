@@ -48,10 +48,10 @@ async def calculate_footprint(data: FootprintInput):
         "shopping": round(shopping, 2),
         "timestamp": datetime.utcnow().isoformat()
     }
-    await save_footprint(result)
+    await save_footprint(data.session_id, result)
     return result
 
 @router.get("/history/{session_id}")
 async def get_history(session_id: str):
     entries = await get_footprint_history(session_id)
-    return {"entries": entries}
+    return entries

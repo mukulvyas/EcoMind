@@ -5,6 +5,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import ErrorBoundary from './components/ErrorBoundary'
 import SkeletonLoader from './components/SkeletonLoader'
+import ToastContainer from './components/Toast'
 
 // Code splitting — each page loads on demand
 const Calculator = lazy(() => import('./pages/Calculator'))
@@ -30,6 +31,7 @@ function PageLoader() {
 export default function App() {
   return (
     <ErrorBoundary>
+      <ToastContainer />
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Default redirect */}

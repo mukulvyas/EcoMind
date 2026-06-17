@@ -7,7 +7,8 @@ import PropTypes from 'prop-types'
 import AppHeader from '../components/AppHeader'
 import BottomNav from '../components/BottomNav'
 import { useFootprint } from '../hooks/useFootprint'
-import { getGovtData, sendChatMessage, getActionPlan, fetchActiveActionPlan } from '../services/api'
+import { getGovtData, sendChatMessage, getActionPlan, fetchActiveActionPlan, toggleActionItem } from '../services/api'
+import { showToast } from '../components/Toast'
 import './AICoach.css'
 
 const QUICK_REPLIES = [
@@ -18,25 +19,51 @@ const QUICK_REPLIES = [
 ]
 
 // ─── Action Plan Card ─────────────────────────────────────────────────────────
-function ActionPlanCard({ plan }) {
-  const [completed, setCompleted] = useState(() => {
-    try {
-      const cached = localStorage.getItem('ecomind_completed_days')
-      return cached ? JSON.parse(cached) : {}
-    } catch {
-      return {}
+function ActionPlanCard({ plan, onPlanUpdate }) {
+  const planId = plan?.plan_id
+  const actions = plan?.actions || (Array.isArray(plan) ? plan : [])
+  const [claiming, setClaiming] = useState(null)
+  const [claimText, setClaimText] = useState('')
+
+  if (!Array.isArray(actions) || actions.length === 0) return null
+
+  const doneCount = actions.filter(a => a.completed).length
+  const totalCount = actions.length
+
+  const handleToggle = async (item) => {
+    if (!item.completed && !claiming) {
+      setClaiming(item.day)
+      setClaimText('')
+      return
     }
-  })
+    if (item.completed) {
+      await submitToggle(item, false, '')
+    }
+  }
 
-  if (!Array.isArray(plan) || plan.length === 0) return null
-
-  const toggle = (day) => {
-    const next = { ...completed, [day]: !completed[day] }
-    setCompleted(next)
+  const submitToggle = async (item, completed, claim) => {
+    setClaiming(null)
+    if (!planId) {
+      showToast('No active plan found to update.', 'error')
+      return
+    }
     try {
-      localStorage.setItem('ecomind_completed_days', JSON.stringify(next))
-    } catch (e) {
-      console.warn('Could not save completed days to localStorage:', e)
+      const data = await toggleActionItem(planId, item.day, completed, claim)
+      if (data.verification?.verified || !completed) {
+        showToast(
+          completed
+            ? `✓ ${data.verification?.co2_saved_kg?.toFixed(1) || 0}kg CO₂ saved — verified!`
+            : 'Action unchecked.',
+          completed ? 'success' : 'info'
+        )
+        if (onPlanUpdate) {
+          onPlanUpdate()
+        }
+      } else {
+        showToast(data.verification?.message || 'Tell us more about how you completed this.', 'warning')
+      }
+    } catch (err) {
+      showToast('Something went wrong, try again.', 'error')
     }
   }
 
@@ -44,33 +71,52 @@ function ActionPlanCard({ plan }) {
     <div className="action-plan-bubble">
       <div className="action-plan-bubble-header">
         <span>🗓️ Your 30-Day Green Plan</span>
-        <span className="action-plan-count">{Object.values(completed).filter(Boolean).length}/{plan.length} done</span>
+        <span className="action-plan-count">{doneCount}/{totalCount} done</span>
       </div>
       <div className="action-plan-items">
-        {plan.slice(0, 6).map((item) => {
+        {actions.slice(0, 6).map((item) => {
           const co2Saving = item.co2_saving_kg ?? item.co2Saving ?? 0
           return (
-            <div key={item.day} className="plan-item">
+            <div key={item.day} className={`plan-item ${item.completed ? 'completed' : ''}`}>
               <button
-                className={`plan-check ${completed[item.day] ? 'done' : ''}`}
-                onClick={() => toggle(item.day)}
-                aria-label={`${completed[item.day] ? 'Unmark' : 'Complete'} day ${item.day}`}
-                aria-pressed={!!completed[item.day]}
+                className={`plan-check ${item.completed ? 'done' : ''}`}
+                onClick={() => handleToggle(item)}
+                aria-label={`${item.completed ? 'Unmark' : 'Complete'} day ${item.day}`}
+                aria-pressed={!!item.completed}
               >
-                {completed[item.day] ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                {item.completed ? <CheckCircle2 size={18} /> : <Circle size={18} />}
               </button>
-              <div className="plan-item-text">
+              <div className="plan-item-text" style={{ flex: 1 }}>
                 <span className="plan-day">Day {item.day}</span>
                 <span className="plan-action">{item.action}</span>
                 {co2Saving > 0 && (
                   <span className="plan-saving">↓ {co2Saving} kg CO₂</span>
                 )}
+                {claiming === item.day && (
+                  <div className="claim-input-wrap">
+                    <input
+                      className="claim-input"
+                      placeholder="Tell us how you did it…"
+                      value={claimText}
+                      onChange={e => setClaimText(e.target.value)}
+                      autoFocus
+                    />
+                    <div className="claim-btns">
+                      <button className="claim-btn claim-confirm" onClick={() => submitToggle(item, true, claimText)}>
+                        Submit
+                      </button>
+                      <button className="claim-btn claim-cancel" onClick={() => setClaiming(null)}>
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           )
         })}
-        {plan.length > 6 && (
-          <p className="plan-more">+ {plan.length - 6} more actions</p>
+        {actions.length > 6 && (
+          <p className="plan-more">+ {actions.length - 6} more actions</p>
         )}
       </div>
     </div>
@@ -78,7 +124,8 @@ function ActionPlanCard({ plan }) {
 }
 
 ActionPlanCard.propTypes = {
-  plan: PropTypes.array.isRequired,
+  plan: PropTypes.oneOfType([PropTypes.array, PropTypes.object]),
+  onPlanUpdate: PropTypes.func,
 }
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -119,6 +166,22 @@ export default function AICoach() {
   const textareaRef = useRef(null)
   const nextId = useRef(1)
 
+  const refreshPlan = useCallback(() => {
+    fetchActiveActionPlan().then(res => {
+      if (res.plan) {
+        try {
+          const planData = typeof res.plan === 'string' ? JSON.parse(res.plan) : res.plan
+          if (planData && planData.plan_id) {
+            setActionPlan(planData)
+          } else if (Array.isArray(planData) && planData.length > 0) {
+            setActionPlan({ actions: planData })
+          }
+        } catch(e) {}
+      }
+    }).catch(() => {})
+  }, [])
+
+
   // Load initial greeting
   useEffect(() => {
     const greeting = {
@@ -131,17 +194,8 @@ export default function AICoach() {
     setMessages([greeting])
 
     // Fetch active action plan on load
-    fetchActiveActionPlan().then(res => {
-      if (res.plan) {
-        try {
-          const planArray = typeof res.plan === 'string' ? JSON.parse(res.plan) : res.plan
-          if (Array.isArray(planArray) && planArray.length > 0) {
-            setActionPlan(planArray)
-          }
-        } catch(e) {}
-      }
-    }).catch(() => {})
-  }, [])
+    refreshPlan()
+  }, [refreshPlan])
 
   // Load govt data in background
   useEffect(() => {
@@ -178,22 +232,38 @@ export default function AICoach() {
 
         if (isRequestingPlan) {
           const res = await getActionPlan(history)
-          let planArray = []
+          let planData = null
           try {
-            planArray = typeof res.plan === 'string' ? JSON.parse(res.plan) : res.plan
+            planData = typeof res.plan === 'string' ? JSON.parse(res.plan) : res.plan
           } catch (e) {
             console.error('Failed to parse action plan JSON:', e)
           }
 
-          if (Array.isArray(planArray) && planArray.length > 0) {
-            setActionPlan(planArray)
-            const botMsg = {
-              id: nextId.current++,
-              type: 'bot',
-              text: "I've generated a customized 30-day carbon reduction plan based on your carbon footprint. You can view and track your progress in the plan card below!",
-              time: 'Just now',
+          if (planData) {
+            const actions = Array.isArray(planData) ? planData : (planData.actions || [])
+            const plan_id = res.plan_id || planData.plan_id
+            if (actions.length > 0) {
+              setActionPlan({ plan_id, actions })
+              const botMsg = {
+                id: nextId.current++,
+                type: 'bot',
+                text: "I've generated a customized 30-day carbon reduction plan based on your carbon footprint. You can view and track your progress in the plan card below!",
+                time: 'Just now',
+              }
+              setMessages(prev => [...prev, botMsg])
+            } else {
+              // Fallback general chat if plan is empty
+              const resChat = await sendChatMessage(history)
+              const isError = resChat.reply?.includes('Too many requests')
+              const botMsg = {
+                id: nextId.current++,
+                type: 'bot',
+                isError,
+                text: resChat.reply || "I'm thinking about your plan. Could you ask me again in a moment?",
+                time: 'Just now',
+              }
+              setMessages(prev => [...prev, botMsg])
             }
-            setMessages(prev => [...prev, botMsg])
           } else {
             // Fallback general chat if plan failed to parse
             const resChat = await sendChatMessage(history)
@@ -314,7 +384,7 @@ export default function AICoach() {
             {actionPlan && (
               <div className="message-row bot">
                 <BotAvatar />
-                <ActionPlanCard plan={actionPlan} />
+                <ActionPlanCard plan={actionPlan} onPlanUpdate={refreshPlan} />
               </div>
             )}
 

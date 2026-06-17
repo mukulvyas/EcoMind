@@ -1,20 +1,22 @@
-// src/pages/Dashboard.jsx
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell,
 } from 'recharts'
-import { Cloud, Zap, Leaf, Truck, CheckCircle2, Circle, Bot, Plus, Clock } from 'lucide-react'
+import { Cloud, Zap, Leaf, Truck, CheckCircle2, Circle, Bot, Plus, Clock, Database } from 'lucide-react'
 import PropTypes from 'prop-types'
 import AppHeader from '../components/AppHeader'
 import BottomNav from '../components/BottomNav'
 import GovtDataCard from '../components/GovtDataCard'
 import BillUploadModal from '../components/BillUploadModal'
 import { MetricCardSkeleton } from '../components/SkeletonLoader'
+import MyUploads from './MyUploads'
+import { showToast } from '../components/Toast'
 import { useFootprint } from '../hooks/useFootprint'
 import { formatShortDate, formatCO2 } from '../utils/formatters'
 import { calculateVsAverage } from '../utils/carbonCalculations'
+import { fetchActiveActionPlan, toggleActionItem } from '../services/api'
 import './Dashboard.css'
 import '../components/BillUploadModal.css'
 import '../components/GovtDataCard.css'
@@ -91,12 +93,89 @@ export default function Dashboard() {
   const [actions, setActions] = useState(INITIAL_ACTIONS)
   const [showHistory, setShowHistory] = useState(false)
   const [showBillModal, setShowBillModal] = useState(false)
+  const [showMyUploads, setShowMyUploads] = useState(false)
 
-  const toggleAction = (id) => {
-    setActions(prev => prev.map(a => a.id === id ? { ...a, done: !a.done } : a))
+  const [dbPlan, setDbPlan] = useState(null)
+  const [claiming, setClaiming] = useState(null)
+  const [claimText, setClaimText] = useState('')
+
+  const fetchPlan = useCallback(() => {
+    fetchActiveActionPlan().then(res => {
+      if (res.plan) {
+        try {
+          const planData = typeof res.plan === 'string' ? JSON.parse(res.plan) : res.plan
+          if (planData && planData.actions) {
+            setDbPlan(planData)
+          }
+        } catch(e) {}
+      }
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    fetchPlan()
+  }, [fetchPlan])
+
+  const handleToggleAction = async (actionItem) => {
+    if (dbPlan) {
+      if (!actionItem.done && !claiming) {
+        setClaiming(actionItem.day)
+        setClaimText('')
+        return
+      }
+      setClaiming(null)
+      try {
+        const completed = !actionItem.done
+        const claim = completed ? claimText : ''
+        const data = await toggleActionItem(dbPlan.plan_id, actionItem.day, completed, claim)
+        if (data.verification?.verified || !completed) {
+          showToast(
+            completed
+              ? `✓ ${data.verification?.co2_saved_kg?.toFixed(1) || 0}kg CO₂ saved — verified!`
+              : 'Action unchecked.',
+            completed ? 'success' : 'info'
+          )
+          fetchPlan()
+        } else {
+          showToast(data.verification?.message || 'Tell us more about how you completed this.', 'warning')
+        }
+      } catch (err) {
+        showToast('Something went wrong, try again.', 'error')
+      }
+    } else {
+      setActions(prev => prev.map(a => a.id === actionItem.id ? { ...a, done: !a.done } : a))
+    }
   }
 
-  const completed = actions.filter(a => a.done).length
+  const completed = useMemo(() => {
+    if (dbPlan) {
+      return dbPlan.completed_actions ?? 0
+    }
+    return actions.filter(a => a.done).length
+  }, [dbPlan, actions])
+
+  const co2SavedDisplay = useMemo(() => {
+    if (dbPlan) {
+      return `${dbPlan.co2_saved_so_far_kg ?? 0}`
+    }
+    return '124'
+  }, [dbPlan])
+
+  const displayActions = useMemo(() => {
+    if (dbPlan && dbPlan.actions && dbPlan.actions.length > 0) {
+      return dbPlan.actions.slice(0, 3).map(a => ({
+        id: a.day,
+        day: a.day,
+        category: a.category,
+        Icon: a.category === 'travel' ? Truck : a.category === 'energy' ? Zap : Leaf,
+        title: a.action,
+        desc: `Day ${a.day} Challenge`,
+        saving: `↓ ${a.co2_saving_kg} kg CO₂`,
+        done: !!a.completed
+      }))
+    }
+    return INITIAL_ACTIONS
+  }, [dbPlan])
 
   // Build chart data from real Firestore footprints, fall back to mock
   const chartData = useMemo(() => {
@@ -132,18 +211,29 @@ export default function Dashboard() {
   return (
     <div className="app-shell">
       <AppHeader rightContent={
-        userProfile?.photoURL ? (
-          <img
-            src={userProfile.photoURL}
-            alt={userProfile.displayName ?? 'User avatar'}
-            className="dash-avatar-img"
-            referrerPolicy="no-referrer"
-          />
-        ) : (
-          <div className="dash-avatar" aria-label="User profile">
-            <span style={{ fontSize: 18 }}>👤</span>
-          </div>
-        )
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            className="my-uploads-btn"
+            onClick={() => setShowMyUploads(true)}
+            aria-label="View my uploads and data"
+            title="My Data"
+          >
+            <Database size={16} />
+            <span>My Data</span>
+          </button>
+          {userProfile?.photoURL ? (
+            <img
+              src={userProfile.photoURL}
+              alt={userProfile.displayName ?? 'User avatar'}
+              className="dash-avatar-img"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="dash-avatar" aria-label="User profile">
+              <span style={{ fontSize: 18 }}>👤</span>
+            </div>
+          )}
+        </div>
       } />
 
       <div className="page-content">
@@ -225,7 +315,7 @@ export default function Dashboard() {
                   <div className="metric-header">
                     <div>
                       <span className="metric-label">CO₂ SAVED</span>
-                      <div className="metric-value">124 <span className="metric-unit">kg total</span></div>
+                      <div className="metric-value">{co2SavedDisplay} <span className="metric-unit">kg total</span></div>
                     </div>
                     <div className="metric-icon-circle metric-icon-green">
                       <Leaf size={20} aria-hidden="true" />
@@ -346,21 +436,59 @@ export default function Dashboard() {
               <button className="action-view-all" onClick={() => navigate('/ai-coach')}>View all tasks</button>
             </div>
             <div className="action-list" role="list">
-              {actions.map(({ id, Icon, title, desc, saving, done }) => (
-                <div key={id} className="action-item" role="listitem">
-                  <div className="action-icon-circle" aria-hidden="true"><Icon size={16} /></div>
-                  <div className="action-text">
-                    <span className="action-title">{title}</span>
-                    <span className="action-desc">{desc}</span>
-                    <span className="action-saving">{saving}</span>
+              {displayActions.map((item) => (
+                <div key={item.id} className={`action-item ${item.done ? 'done' : ''}`} role="listitem">
+                  <div className="action-icon-circle" aria-hidden="true"><item.Icon size={16} /></div>
+                  <div className="action-text" style={{ flex: 1 }}>
+                    <span className="action-title">{item.title}</span>
+                    <span className="action-desc">{item.desc}</span>
+                    <span className="action-saving">{item.saving}</span>
+                    {claiming === item.day && (
+                      <div className="claim-input-wrap" style={{ marginTop: 8 }}>
+                        <input
+                          className="claim-input"
+                          placeholder="Tell us how you did it…"
+                          value={claimText}
+                          onChange={e => setClaimText(e.target.value)}
+                          autoFocus
+                          style={{
+                            width: '100%',
+                            padding: '6px 10px',
+                            border: '1.5px solid var(--primary)',
+                            borderRadius: '8px',
+                            fontSize: '12px',
+                            outline: 'none',
+                            background: 'var(--surface-container-low)',
+                            color: 'var(--on-surface)',
+                            marginBottom: '4px'
+                          }}
+                        />
+                        <div className="claim-btns" style={{ display: 'flex', gap: 6 }}>
+                          <button
+                            className="claim-btn claim-confirm"
+                            onClick={() => handleToggleAction(item)}
+                            style={{ flex: 1, padding: '6px', fontSize: '11px', fontWeight: '600', border: 'none', borderRadius: '8px', cursor: 'pointer', background: 'var(--primary)', color: '#fff' }}
+                          >
+                            Submit
+                          </button>
+                          <button
+                            className="claim-btn claim-cancel"
+                            onClick={() => setClaiming(null)}
+                            style={{ flex: 1, padding: '6px', fontSize: '11px', fontWeight: '600', border: 'none', borderRadius: '8px', cursor: 'pointer', background: 'var(--surface-container)', color: 'var(--on-surface-variant)' }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <button
-                    className={`action-check ${done ? 'done' : ''}`}
-                    onClick={() => toggleAction(id)}
-                    aria-label={`${done ? 'Unmark' : 'Complete'} action: ${title}`}
-                    aria-pressed={done}
+                    className={`action-check ${item.done ? 'done' : ''}`}
+                    onClick={() => handleToggleAction(item)}
+                    aria-label={`${item.done ? 'Unmark' : 'Complete'} action: ${item.title}`}
+                    aria-pressed={item.done}
                   >
-                    {done ? <CheckCircle2 size={22} /> : <Circle size={22} />}
+                    {item.done ? <CheckCircle2 size={22} /> : <Circle size={22} />}
                   </button>
                 </div>
               ))}
@@ -409,10 +537,24 @@ export default function Dashboard() {
         isOpen={showBillModal}
         onClose={() => setShowBillModal(false)}
         onAnalysisComplete={(result) => {
-          console.log('Bill analyzed:', result)
           setShowBillModal(false)
+          if (result?.verification) {
+            const v = result.verification
+            if (v.status === 'verified') {
+              showToast(`✓ Bill verified — ${Number(v.corrected_co2_kg || 0).toFixed(1)}kg CO₂ found`, 'success')
+            } else if (v.status === 'suspicious') {
+              showToast('⚠ Bill data seems unusual — check the details', 'warning')
+            } else {
+              showToast('Bill uploaded but could not be fully analyzed.', 'warning')
+            }
+          } else {
+            showToast('Bill analyzed and saved!', 'success')
+          }
         }}
       />
+
+      {/* My Uploads Modal */}
+      {showMyUploads && <MyUploads onClose={() => setShowMyUploads(false)} />}
 
       <BottomNav />
     </div>

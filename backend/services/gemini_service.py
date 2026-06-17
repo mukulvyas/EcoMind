@@ -14,64 +14,89 @@ def strip_json_fences(text: str) -> str:
     return text.strip()
 
 # Function 1: Chat with EcoMind
-async def chat_with_ecomind(messages: list, footprint: dict = None, historical_chat: list = None, active_plan: str = None) -> str:
+async def chat_with_ecomind(messages: list, footprint: dict = None, historical_chat: list = None, active_plan: dict = None, recent_bills: list = None) -> str:
     try:
         api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
             return "Configuration error: API key missing."
-            
+
         genai.configure(api_key=api_key)
-        
+
         system_instruction = (
             "You are EcoMind, a sharp carbon coach for Indian users.\n"
             "Rules you must always follow:\n"
             "- Maximum 3 sentences per response. Never more.\n"
-            "- Always end with ONE specific number (kg CO₂ saved, rupees saved, or % reduction)\n"
+            "- Always end with ONE specific number (kg CO\u2082 saved, rupees saved, or % reduction)\n"
             "- No bold text, no bullet points, no markdown formatting\n"
             "- Sound like a smart friend, not a report\n"
-            "- Use Indian context: BEE, CEA, BESCOM, kg CO₂, INR\n"
+            "- Use Indian context: BEE, CEA, BESCOM, kg CO\u2082, INR\n"
             "- If asked for a plan, give max 5 actions, one line each"
         )
-        
-        # Build RAG Context
+
+        # ── RAG Context Block ──────────────────────────────────────────────────
         context_parts = []
+
         if footprint:
-            context_parts.append(f"Current Footprint: {footprint}")
-            
-        if active_plan:
-            context_parts.append(f"User's current 30-day action plan:\n{active_plan}")
-            
+            fp = footprint
+            context_parts.append(
+                f"USER FOOTPRINT:\n"
+                f"  Total: {fp.get('total_co2', 2.4)}T/yr (India avg: 1.9T)\n"
+                f"  Travel:{fp.get('travel',0.9)}T  Food:{fp.get('food',0.7)}T  "
+                f"Energy:{fp.get('energy',0.5)}T  Shopping:{fp.get('shopping',0.3)}T"
+            )
+
+        if recent_bills:
+            bill_lines = []
+            for b in recent_bills[:5]:
+                icon = "\u26a1" if b.get('bill_type') == 'electricity' else "\U0001f525" if b.get('bill_type') == 'lpg' else "\u26fd"
+                bill_lines.append(
+                    f"  {icon} {b.get('bill_type','').title()} — {b.get('units',0)} units, "
+                    f"{b.get('co2_kg',0):.1f}kg CO\u2082 ({b.get('period','')}) [{b.get('status','?')}]"
+                )
+            context_parts.append("RECENT BILLS:\n" + "\n".join(bill_lines))
+
+        if active_plan and active_plan.get('actions'):
+            done = active_plan.get('completed_actions', 0)
+            total = active_plan.get('total_actions', 30)
+            saved = active_plan.get('co2_saved_so_far_kg', 0)
+            pending = next((a['action'] for a in active_plan['actions'] if not a.get('completed')), 'all done!')
+            context_parts.append(
+                f"ACTION PLAN PROGRESS:\n"
+                f"  {done}/{total} actions done — {saved:.1f}kg CO\u2082 saved so far\n"
+                f"  Next pending: {pending}"
+            )
+
         if historical_chat:
-            history_summary = " ".join([m.get('content', '') for m in historical_chat[-5:]])
-            context_parts.append(f"Recent context: {history_summary}")
-            
+            last_msgs = historical_chat[-5:]
+            summary = "  ".join([f"{m.get('role','?')}: {m.get('content','')[:60]}" for m in last_msgs])
+            context_parts.append(f"RECENT CONVERSATION:\n  {summary}")
+
         if context_parts:
-            system_instruction += "\n\nUser Context:\n" + "\n".join(context_parts)
-            
+            system_instruction += "\n\nUSER CONTEXT:\n" + "\n\n".join(context_parts)
+        # ─────────────────────────────────────────────────────────────────────
+
         model = genai.GenerativeModel(
             model_name="gemini-1.5-flash",
             system_instruction=system_instruction
         )
-        
+
         # Format Gemini chat history (role: user/model)
         gemini_history = []
         for msg in messages[:-1]:
             role = "user" if msg["role"] == "user" else "model"
-            gemini_history.append({
-                "role": role,
-                "parts": [msg["content"]]
-            })
-            
-        # Build user footprint context
-        travel = footprint.get("travel", 0.9)
-        food = footprint.get("food", 0.7)
-        energy = footprint.get("energy", 0.5)
-        shopping = footprint.get("shopping", 0.3)
-        total_co2 = footprint.get("total_co2", 2.4)
-        
+            gemini_history.append({"role": role, "parts": [msg["content"]]})
+
+        # Build footprint context for user message
+        fp = footprint or {"total_co2": 2.4, "travel": 0.9, "food": 0.7, "energy": 0.5, "shopping": 0.3}
+        travel = fp.get("travel", 0.9)
+        food = fp.get("food", 0.7)
+        energy = fp.get("energy", 0.5)
+        shopping = fp.get("shopping", 0.3)
+        total_co2 = fp.get("total_co2", 2.4)
+
         categories = {"travel": travel, "food": food, "energy": energy, "shopping": shopping}
         biggest = max(categories, key=categories.get)
-        
+
         footprint_context = (
             f"User footprint:\n"
             f"- Total: {total_co2} tonnes/year (India avg: 1.9T)\n"
@@ -79,10 +104,9 @@ async def chat_with_ecomind(messages: list, footprint: dict = None, historical_c
             f"- Energy: {energy}T | Shopping: {shopping}T\n"
             f"- Biggest category: {biggest}\n"
         )
-        
-        # Prepend footprint context to user message
+
         latest_content = f"{footprint_context}\nUser message: {messages[-1]['content']}"
-        
+
         chat = model.start_chat(history=gemini_history)
         response = chat.send_message(latest_content)
         return response.text

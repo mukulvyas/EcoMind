@@ -20,6 +20,28 @@
   cursor: pointer;
 }
 
+/* My Data Button */
+.my-uploads-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  background: var(--primary-container);
+  color: var(--primary-dark);
+  border: none;
+  border-radius: var(--radius-full);
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.my-uploads-btn:hover {
+  background: var(--primary);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
 /* History */
 .history-list {
   display: flex;

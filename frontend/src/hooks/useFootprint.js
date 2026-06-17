@@ -24,20 +24,19 @@ export function useFootprint() {
     setError(null)
     try {
       const res = await getHistory()
-      if (res && res.entries) {
-        // Map backend snake_case properties to frontend camelCase
-        const mapped = res.entries.map((entry, idx) => ({
-          id: entry.id || String(idx),
-          totalCO2: entry.total_co2,
-          travel: entry.travel,
-          food: entry.food,
-          energy: entry.energy,
-          shopping: entry.shopping,
-          createdAt: entry.timestamp ? { seconds: Math.floor(new Date(entry.timestamp).getTime() / 1000) } : null,
-          ...entry
-        }))
-        setFootprints(mapped)
-      }
+      const rawEntries = Array.isArray(res) ? res : (res && Array.isArray(res.entries) ? res.entries : [])
+      // Map backend snake_case properties to frontend camelCase
+      const mapped = rawEntries.map((entry, idx) => ({
+        id: entry.id || String(idx),
+        totalCO2: entry.total_co2 || entry.totalCO2 || 0,
+        travel: entry.travel || 0,
+        food: entry.food || 0,
+        energy: entry.energy || 0,
+        shopping: entry.shopping || 0,
+        createdAt: entry.timestamp ? { seconds: Math.floor(new Date(entry.timestamp).getTime() / 1000) } : (entry.created_at ? { seconds: Math.floor(new Date(entry.created_at).getTime() / 1000) } : null),
+        ...entry
+      }))
+      setFootprints(mapped)
     } catch (err) {
       console.error('Error fetching footprint history:', err)
       setError('Failed to load footprint data.')

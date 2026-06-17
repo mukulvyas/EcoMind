@@ -49,6 +49,15 @@ export const fetchActiveActionPlan = async () => {
   return res.json();
 };
 
+export const toggleActionItem = async (planId, day, completed, claim) => {
+  const res = await fetch(`${BASE_URL}/api/chat/action/${getSessionId()}/${planId}/${day}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ completed, user_claim: claim })
+  });
+  return res.json();
+};
+
 export const uploadBill = async (file, billType) => {
   const form = new FormData();
   form.append("file", file);

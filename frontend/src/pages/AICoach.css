@@ -359,3 +359,38 @@
   font-style: italic;
 }
 
+.claim-input-wrap {
+  margin-top: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.claim-input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1.5px solid var(--primary);
+  border-radius: 8px;
+  font-size: 13px;
+  outline: none;
+  background: var(--surface-container-low);
+  color: var(--on-surface);
+}
+
+.claim-btns { display: flex; gap: 6px; }
+
+.claim-btn {
+  flex: 1;
+  padding: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.claim-confirm { background: var(--primary); color: #fff; }
+.claim-cancel  { background: var(--surface-container); color: var(--on-surface-variant); }
+
+
