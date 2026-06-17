@@ -14,14 +14,18 @@ try:
         creds_dict = json.loads(service_account_info_str)
         credentials = service_account.Credentials.from_service_account_info(creds_dict)
         db = firestore.AsyncClient(project=creds_dict.get("project_id"), credentials=credentials)
-        print("Firestore connected using FIREBASE_SERVICE_ACCOUNT_KEY.")
+        print("[Firestore] ✅ Connected using FIREBASE_SERVICE_ACCOUNT_KEY env var.")
     else:
-        # Fallback to Application Default Credentials (e.g. for GCP environments)
+        # Fallback to Application Default Credentials (works when Cloud Run SA has Firestore IAM)
+        print("[Firestore] ⚠️  FIREBASE_SERVICE_ACCOUNT_KEY not set — falling back to ADC.")
+        print("[Firestore]    Ensure Cloud Run SA has roles/datastore.user on project ecomind-499612.")
         db = firestore.AsyncClient(project="ecomind-499612")
-        print("Firestore connected using Application Default Credentials for project ecomind-499612.")
+        print("[Firestore] ✅ Connected using Application Default Credentials.")
 except Exception as e:
-    print(f"Warning: Firestore init failed: {e}. Running in offline mode.")
+    print(f"[Firestore] ❌ Init failed: {e}")
+    print("[Firestore]    Set FIREBASE_SERVICE_ACCOUNT_KEY env var on Cloud Run to fix this.")
     db = None
+
 
 def _ts() -> str:
     """
