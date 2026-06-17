@@ -112,7 +112,7 @@ async def chat_with_ecomind(messages: list, footprint: dict = None, historical_c
         return response.text
     except Exception as e:
         print(f"Gemini chat error: {e}")
-        return "Too many requests right now. Please wait a moment and try again."
+        return f"API Error: {str(e)}"
 
 # Function 2: Analyze Bill Image
 async def analyze_bill_image(image_bytes: bytes, filename: str, bill_type: str) -> dict:
