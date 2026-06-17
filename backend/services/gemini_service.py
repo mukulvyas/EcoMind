@@ -188,7 +188,7 @@ async def analyze_bill_image(image_bytes: bytes, filename: str, bill_type: str) 
         import io
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-flash-latest")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         image = Image.open(io.BytesIO(image_bytes))
         
@@ -259,7 +259,7 @@ async def generate_action_plan(footprint: dict) -> list:
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-flash-latest")
+        model = genai.GenerativeModel("gemini-1.5-flash")
         
         travel = footprint.get("travel", 0.9)
         food = footprint.get("food", 0.7)
