@@ -27,7 +27,7 @@ def _is_allowed_origin(origin: str) -> bool:
     if origin in ALLOWED_ORIGINS:
         return True
     # Allow all Cloud Run domains (*.run.app) for hackathon flexibility
-    if re.match(r"https://[\w-]+\.run\.app$", origin):
+    if re.match(r"https://[\w.-]+\.run\.app$", origin):
         return True
     return False
 
