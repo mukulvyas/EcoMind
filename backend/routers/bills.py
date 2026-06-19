@@ -4,10 +4,42 @@ Bills router — upload utility bills for Gemini Vision analysis and CO₂ extra
 Part of Challenge 3 solution: lets users understand their carbon footprint by
 analysing real electricity, LPG, and fuel bills with AI-powered vision.
 """
-from fastapi import APIRouter, UploadFile, File, Form
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException
 from services.gemini_service import analyze_bill_image
 from services.firestore_service import save_bill, get_all_bills, update_bill_status
 from services.verification_agent import verify_bill
+
+# ─── Upload guards ────────────────────────────────────────────────────────────
+MAX_UPLOAD_BYTES = 10 * 1024 * 1024  # 10 MB
+
+_ALLOWED_MIME_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "application/pdf",
+    "text/plain",
+}
+
+# Magic-byte signatures for allowed binary formats
+_MAGIC_BYTES: list[tuple[bytes, str]] = [
+    (b"\xff\xd8\xff", "JPEG"),
+    (b"\x89PNG\r\n\x1a\n", "PNG"),
+    (b"%PDF", "PDF"),
+]
+
+def _check_magic_bytes(data: bytes) -> bool:
+    """Return True if the file starts with a recognised binary signature or is text."""
+    if not data:
+        return False
+    for magic, _ in _MAGIC_BYTES:
+        if data[:len(magic)] == magic:
+            return True
+    # Allow plain-text files (e.g. receipts as .txt)
+    try:
+        data[:512].decode("utf-8")
+        return True
+    except UnicodeDecodeError:
+        return False
 
 router = APIRouter()
 
@@ -47,6 +79,28 @@ async def upload_bill(
     """
     # 1. Read image bytes
     image_bytes = await file.read()
+
+    # Validate file size
+    if len(image_bytes) > MAX_UPLOAD_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail="File too large. Maximum allowed size is 10 MB.",
+        )
+
+    # Validate MIME type reported by the client
+    content_type = (file.content_type or "").split(";")[0].strip().lower()
+    if content_type and content_type not in _ALLOWED_MIME_TYPES:
+        raise HTTPException(
+            status_code=415,
+            detail=f"Unsupported file type '{content_type}'. Allowed: JPG, PNG, WebP, PDF, TXT.",
+        )
+
+    # Validate magic bytes to prevent spoofed Content-Type
+    if image_bytes and not _check_magic_bytes(image_bytes):
+        raise HTTPException(
+            status_code=415,
+            detail="File content does not match a supported format.",
+        )
 
     # 2. Gemini Vision extraction
     bill_data = await analyze_bill_image(image_bytes, file.filename, bill_type)

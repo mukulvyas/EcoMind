@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowRight, Leaf, ChevronRight, Car, Plane, Bus, Flame, Zap, Check, Plus } from 'lucide-react'
 import PropTypes from 'prop-types'
@@ -32,6 +32,9 @@ export default function Calculator() {
   const [showResults, setShowResults] = useState(false)
   const [showBillModal, setShowBillModal] = useState(false)
   const [saving, setSaving] = useState(false)
+
+  // Set page title for SEO and problem-statement traceability
+  useEffect(() => { document.title = 'Carbon Calculator | EcoMind' }, [])
 
   // Form State
   const [carKm, setCarKm] = useState('')
@@ -145,24 +148,27 @@ export default function Calculator() {
             {!showResults ? (
               <>
                 {/* Step Indicator */}
-                <div className="step-indicator">
+                <div className="step-indicator" role="list" aria-label="Calculator steps">
                   {STEP_LABELS.map((label, i) => {
                     const num = i + 1
                     const isDone = step > num
                     const isActive = step === num
                     return (
-                      <div key={num} className="step-indicator-row">
+                      <div key={num} className="step-indicator-row" role="listitem">
                         <button
                           className={`step-circle ${isActive ? 'active' : ''} ${isDone ? 'done' : ''}`}
                           onClick={() => num < step && setStep(num)}
                           style={{ cursor: num < step ? 'pointer' : 'default' }}
+                          aria-current={isActive ? 'step' : undefined}
+                          aria-label={`Step ${num}: ${label}${isDone ? ' (completed)' : isActive ? ' (current)' : ''}`}
+                          aria-disabled={num > step}
                         >
-                          {isDone ? <Check size={14} strokeWidth={3} /> : num}
+                          {isDone ? <Check size={14} strokeWidth={3} aria-hidden="true" /> : num}
                         </button>
                         <span className={`step-label ${isActive ? 'active' : isDone ? 'done' : ''}`}>
                           {label}
                         </span>
-                        {i < 2 && <div className={`step-line ${step > num ? 'done' : ''}`} />}
+                        {i < 2 && <div className={`step-line ${step > num ? 'done' : ''}`} aria-hidden="true" />}
                       </div>
                     )
                   })}
@@ -191,15 +197,16 @@ export default function Calculator() {
                     </div>
 
                     <div className="form-group">
-                      <label className="form-label">
-                        <Plane size={14} /> Flights / year
+                      <label className="form-label" id="flights-label">
+                        <Plane size={14} aria-hidden="true" /> Flights / year
                       </label>
-                      <div className="toggle-group">
+                      <div className="toggle-group" role="group" aria-labelledby="flights-label">
                         {['0-2', '3-5', '6+'].map(opt => (
                           <button
                             key={opt}
                             className={`toggle-btn ${flights === opt ? 'selected' : ''}`}
                             onClick={() => setFlights(opt)}
+                            aria-pressed={flights === opt}
                           >
                             {opt}
                           </button>
@@ -209,10 +216,10 @@ export default function Calculator() {
 
                     <div className="form-group">
                       <div className="slider-header">
-                        <label className="form-label" style={{ margin: 0 }}>
-                          <Bus size={14} /> Public Transport Frequency
+                        <label className="form-label" style={{ margin: 0 }} id="transport-label">
+                          <Bus size={14} aria-hidden="true" /> Public Transport Frequency
                         </label>
-                        <span className="slider-value">{TRANSPORT_LABELS[transport]}</span>
+                        <span className="slider-value" aria-live="polite">{TRANSPORT_LABELS[transport]}</span>
                       </div>
                       <input
                         id="transport-slider"
@@ -223,8 +230,13 @@ export default function Calculator() {
                         step={1}
                         value={transport}
                         onChange={e => setTransport(Number(e.target.value))}
+                        aria-labelledby="transport-label"
+                        aria-valuemin={0}
+                        aria-valuemax={4}
+                        aria-valuenow={transport}
+                        aria-valuetext={TRANSPORT_LABELS[transport]}
                       />
-                      <div className="slider-labels">
+                      <div className="slider-labels" aria-hidden="true">
                         {TRANSPORT_LABELS.map(l => <span key={l}>{l}</span>)}
                       </div>
                     </div>
@@ -239,17 +251,19 @@ export default function Calculator() {
                 {step === 2 && (
                   <div className="step-content animate-fade-up">
                     <div className="form-group">
-                      <label className="form-label">Diet Type</label>
-                      <div className="diet-grid">
+                      <label className="form-label" id="diet-label">Diet Type</label>
+                      <div className="diet-grid" role="group" aria-labelledby="diet-label">
                         {FOOD_OPTIONS.map(opt => (
                           <button
                             key={opt.value}
                             className={`diet-card ${diet === opt.value ? 'selected' : ''}`}
                             onClick={() => setDiet(opt.value)}
+                            aria-pressed={diet === opt.value}
+                            aria-label={`${opt.label} diet — approximately ${opt.co2} tonnes CO₂ per year`}
                           >
-                            <span className="diet-emoji">{opt.emoji}</span>
+                            <span className="diet-emoji" aria-hidden="true">{opt.emoji}</span>
                             <span className="diet-label">{opt.label}</span>
-                            <span className="diet-co2">~{opt.co2}t CO₂</span>
+                            <span className="diet-co2" aria-hidden="true">~{opt.co2}t CO₂</span>
                           </button>
                         ))}
                       </div>
@@ -287,15 +301,17 @@ export default function Calculator() {
                 {step === 3 && (
                   <div className="step-content animate-fade-up">
                     <div className="form-group">
-                      <label className="form-label"><Zap size={14} /> Energy Source</label>
-                      <div className="energy-options">
+                      <label className="form-label" id="energy-label"><Zap size={14} aria-hidden="true" /> Energy Source</label>
+                      <div className="energy-options" role="group" aria-labelledby="energy-label">
                         {ENERGY_OPTIONS.map(opt => (
                           <button
                             key={opt.value}
                             className={`energy-card ${energySource === opt.value ? 'selected' : ''}`}
                             onClick={() => setEnergySource(opt.value)}
+                            aria-pressed={energySource === opt.value}
+                            aria-label={`${opt.label} energy source`}
                           >
-                            <span style={{ fontSize: 24 }}>{opt.emoji}</span>
+                            <span style={{ fontSize: 24 }} aria-hidden="true">{opt.emoji}</span>
                             <span>{opt.label}</span>
                           </button>
                         ))}
@@ -318,12 +334,15 @@ export default function Calculator() {
                     </div>
 
                     <div className="toggle-row">
-                      <span className="form-label" style={{ margin: 0 }}>Renewable Provider?</span>
+                      <span className="form-label" style={{ margin: 0 }} id="renewable-label">Renewable Provider?</span>
                       <button
                         className={`toggle-switch ${renewableToggle ? 'on' : ''}`}
                         onClick={() => setRenewableToggle(!renewableToggle)}
+                        role="switch"
+                        aria-checked={renewableToggle}
+                        aria-labelledby="renewable-label"
                       >
-                        <span className="toggle-thumb" />
+                        <span className="toggle-thumb" aria-hidden="true" />
                       </button>
                     </div>
 
@@ -340,7 +359,13 @@ export default function Calculator() {
               /* Results */
               <div className="results-section animate-fade-up">
                 <div className="score-circle-wrap">
-                  <svg width="160" height="160" className="score-svg">
+                  <svg
+                    width="160"
+                    height="160"
+                    className="score-svg"
+                    role="img"
+                    aria-label={`Your carbon footprint: ${score} tonnes CO₂ per year`}
+                  >
                     <circle cx="80" cy="80" r="68" fill="none" stroke="#e8e8ea" strokeWidth="10" />
                     <circle
                       cx="80" cy="80" r="68"
@@ -354,7 +379,7 @@ export default function Calculator() {
                       style={{ transition: 'stroke-dashoffset 1.5s ease-out' }}
                     />
                   </svg>
-                  <div className="score-center">
+                  <div className="score-center" aria-hidden="true">
                     <span className="score-number">{score}</span>
                     <span className="score-unit">tonnes/yr</span>
                   </div>

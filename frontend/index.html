@@ -40,6 +40,34 @@
     <!-- Skip navigation for keyboard users -->
     <a href="#main-content" class="skip-link">Skip to main content</a>
     <div id="root" role="application" aria-label="EcoMind Carbon Footprint Coach"></div>
+    <!-- JSON-LD structured data for search engines and problem-statement traceability -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "EcoMind",
+      "description": "AI-powered carbon footprint tracking and reduction platform for Indian users. Calculates, tracks, and reduces personal CO₂ emissions with personalised insights powered by Google Gemini.",
+      "url": "https://ecomind.app",
+      "applicationCategory": "EnvironmentApplication",
+      "operatingSystem": "Web",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "INR"
+      },
+      "featureList": [
+        "Carbon footprint calculator with India-specific emission factors",
+        "AI coach powered by Google Gemini for personalised reduction advice",
+        "Utility bill OCR and CO₂ extraction",
+        "30-day personalised action plans",
+        "Real-time government environmental data (CEA, CPCB, PPAC, MoEFCC)"
+      ],
+      "creator": {
+        "@type": "Organization",
+        "name": "EcoMind"
+      }
+    }
+    </script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

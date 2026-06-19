@@ -1,6 +1,6 @@
 import os
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from google.cloud import firestore
 
 import json
@@ -28,7 +28,7 @@ except Exception as e:
 
 def _ts() -> str:
     """Return the current UTC timestamp as an ISO 8601 string."""
-    return datetime.utcnow().isoformat()
+    return datetime.now(timezone.utc).isoformat()
 
 # ─── FOOTPRINTS ────────────────────────────────────────────────────────────────
 async def save_footprint(session_id: str, data: dict):

@@ -5,8 +5,9 @@ Aligns with Challenge 3: helping individuals understand, track, and reduce their
 carbon footprint through simple actions and personalized insights.
 """
 from fastapi import APIRouter
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from typing import Optional
+import re
 from services.gemini_service import chat_with_ecomind, generate_action_plan
 from services.firestore_service import (
     get_latest_footprint,
@@ -24,6 +25,24 @@ router = APIRouter()
 class ChatMessage(BaseModel):
     role: str = Field(..., description="Speaker role: 'user' or 'assistant'")
     content: str = Field(..., max_length=2000, description="Message text (max 2000 chars)")
+
+    @field_validator('content')
+    @classmethod
+    def sanitise_content(cls, v: str) -> str:
+        """
+        Strip ASCII control characters from message content.
+
+        Removes chars 0x00–0x08 and 0x0B–0x1F to prevent prompt injection
+        through embedded control sequences, while preserving newline (0x0A)
+        and tab (0x09).
+
+        Args:
+            v: Raw message content string.
+
+        Returns:
+            str: Sanitised string with control characters removed.
+        """
+        return re.sub(r'[\x00-\x08\x0b-\x1f]', '', v)
 
 class ChatRequest(BaseModel):
     session_id: str = Field(..., description="UUID identifying the user session")

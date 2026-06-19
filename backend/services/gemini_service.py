@@ -1,17 +1,35 @@
 import os
 import json
+import re
 import google.generativeai as genai
 
-# Helper to strip markdown JSON fences
+__all__ = [
+    "chat_with_ecomind",
+    "analyze_bill_image",
+    "generate_action_plan",
+    "strip_json_fences",
+]
+
+# Module-level constant for the Gemini model used across all functions
+GEMINI_MODEL_NAME: str = "gemini-1.5-flash"
+
+
 def strip_json_fences(text: str) -> str:
     """
-    A brief description of strip_json_fences.
+    Remove markdown code-fence wrappers (```json or ```) from a string.
+
+    Gemini sometimes wraps JSON responses in markdown fences even when
+    instructed not to. This function strips those fences so the result
+    can be passed directly to ``json.loads``.
+
     Args:
-        ...
+        text: Raw text potentially containing markdown code fences.
+
     Returns:
-        ...
+        str: The trimmed text with any leading/trailing fences removed.
+
     Raises:
-        ...
+        No exceptions are raised; the function is purely transformative.
     """
     text = text.strip()
     if text.startswith("```json"):
@@ -101,7 +119,7 @@ async def chat_with_ecomind(messages: list, footprint: dict = None, historical_c
         # ─────────────────────────────────────────────────────────────────────
 
         model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name=GEMINI_MODEL_NAME,
             system_instruction=system_instruction
         )
 
@@ -188,7 +206,7 @@ async def analyze_bill_image(image_bytes: bytes, filename: str, bill_type: str) 
         import io
         
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel(GEMINI_MODEL_NAME)
         
         image = Image.open(io.BytesIO(image_bytes))
         
@@ -259,7 +277,7 @@ async def generate_action_plan(footprint: dict) -> list:
 
     try:
         genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel(GEMINI_MODEL_NAME)
         
         travel = footprint.get("travel", 0.9)
         food = footprint.get("food", 0.7)

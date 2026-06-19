@@ -1,8 +1,21 @@
+"""
+Government and environmental data service for EcoMind.
+
+Provides hardcoded, source-cited reference data from authoritative Indian
+government bodies, supplemented by a live weather fetch from Open-Meteo:
+
+- Grid emission factors — CEA Annual Report 2023-24 (cea.nic.in)
+- Air quality index     — CPCB Annual Report 2023 (cpcb.nic.in)
+- National emissions    — MoEFCC NDC Report 2023 (moef.gov.in)
+- Petroleum data        — PPAC Monthly Report May 2024 (ppac.gov.in)
+- Fuel prices           — PPAC India, June 2024 (ppac.gov.in)
+- Live weather          — Open-Meteo API (open-meteo.com) — no key required
+"""
 import httpx
 
 # ─── Grid Emission Factors ─────────────────────────────────────────────────
 # Source: CEA Annual Report 2023-24, cea.nic.in
-GRID_FACTORS = {
+GRID_FACTORS: dict[str, float] = {
     "Karnataka": 0.82,
     "Maharashtra": 0.95,
     "Delhi": 1.12,
@@ -26,7 +39,7 @@ GRID_FACTORS = {
 
 # ─── AQI Data ──────────────────────────────────────────────────────────────
 # Source: CPCB Annual Report 2023, cpcb.nic.in
-AQI_DATA = {
+AQI_DATA: dict[str, dict] = {
     "Bengaluru":  {"aqi": 89,  "pollutant": "PM2.5", "level": "Moderate"},
     "Mumbai":     {"aqi": 147, "pollutant": "PM2.5", "level": "Unhealthy"},
     "Delhi":      {"aqi": 218, "pollutant": "PM10",  "level": "Very Unhealthy"},
@@ -41,7 +54,7 @@ AQI_DATA = {
 }
 
 # ─── City Coordinates for Open-Meteo ──────────────────────────────────────
-CITY_COORDS = {
+CITY_COORDS: dict[str, tuple[float, float]] = {
     "Bengaluru":  (12.97, 77.59),
     "Mumbai":     (19.07, 72.87),
     "Delhi":      (28.61, 77.20),
@@ -57,7 +70,7 @@ CITY_COORDS = {
 
 # ─── Fuel Prices ───────────────────────────────────────────────────────────
 # Source: PPAC India, June 2024 (ppac.gov.in)
-FUEL_PRICES = {
+FUEL_PRICES: dict[str, dict[str, float]] = {
     "Bengaluru":  {"petrol": 102.86, "diesel": 88.94, "lpg": 812},
     "Mumbai":     {"petrol": 104.21, "diesel": 92.15, "lpg": 802},
     "Delhi":      {"petrol": 94.72,  "diesel": 87.62, "lpg": 803},

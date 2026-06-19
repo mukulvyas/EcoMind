@@ -184,6 +184,7 @@ export default function AICoach() {
 
   // Load initial greeting
   useEffect(() => {
+    document.title = 'AI Coach | EcoMind'
     const greeting = {
       id: nextId.current++,
       type: 'bot',

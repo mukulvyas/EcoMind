@@ -60,7 +60,7 @@ class DynamicCORSMiddleware:
                 await send({"type": "http.response.body", "body": b""})
                 return
 
-            # For actual requests, inject CORS header into response
+            # For actual requests, inject CORS + security headers into response
             if origin and _is_allowed_origin(origin):
                 origin_bytes = origin.encode()
 
@@ -72,6 +72,21 @@ class DynamicCORSMiddleware:
                         headers_list.append((b"x-content-type-options", b"nosniff"))
                         headers_list.append((b"x-frame-options", b"DENY"))
                         headers_list.append((b"x-xss-protection", b"1; mode=block"))
+                        headers_list.append((
+                            b"content-security-policy",
+                            b"default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+                            b"img-src 'self' data: https:; connect-src 'self' https://api.open-meteo.com; "
+                            b"frame-ancestors 'none';"
+                        ))
+                        headers_list.append((
+                            b"strict-transport-security",
+                            b"max-age=31536000; includeSubDomains"
+                        ))
+                        headers_list.append((b"referrer-policy", b"strict-origin-when-cross-origin"))
+                        headers_list.append((
+                            b"permissions-policy",
+                            b"geolocation=(), microphone=(), camera=()"
+                        ))
                         message = {**message, "headers": headers_list}
                     await send(message)
 
@@ -82,22 +97,77 @@ class DynamicCORSMiddleware:
 
 app.add_middleware(DynamicCORSMiddleware)
 
+# ─── Constants ────────────────────────────────────────────────────────────────
+SESSION_ID_MAX_LENGTH = 128
+MAX_REQUEST_BODY_BYTES = 20 * 1024 * 1024  # 20 MB
+
 def is_valid_uuid(value) -> bool:
+    """
+    Validate that the given value is a well-formed UUID v4 or a Firebase UID.
+
+    Args:
+        value: The session ID string to validate.
+
+    Returns:
+        bool: True if the value is a valid UUID v4 or Firebase UID, False otherwise.
+    """
+    if not isinstance(value, str):
+        return False
+    # Reject excessively long strings before any further checks
+    if len(value) > SESSION_ID_MAX_LENGTH:
+        return False
     try:
         uuid.UUID(str(value), version=4)
         return True
     except ValueError:
         # Fallback for Firebase UIDs (alphanumeric, ~28 chars)
-        if isinstance(value, str) and len(value) >= 28 and value.isalnum():
+        if len(value) >= 28 and value.isalnum():
             return True
         return False
 
-RATE_LIMIT_STORE = {}
+# ─── Bounded Rate-Limit Store (LRU eviction at 10 000 sessions) ──────────────
+RATE_LIMIT_STORE: dict[str, list[float]] = {}
 RATE_LIMIT_MAX_REQUESTS = 30
 RATE_LIMIT_WINDOW_SEC = 60
+RATE_LIMIT_MAX_SESSIONS = 10_000  # prevent unbounded memory growth
+
+
+def _evict_oldest_session() -> None:
+    """Remove the session with the oldest most-recent request to keep store bounded."""
+    if not RATE_LIMIT_STORE:
+        return
+    oldest_key = min(
+        RATE_LIMIT_STORE,
+        key=lambda k: RATE_LIMIT_STORE[k][-1] if RATE_LIMIT_STORE[k] else 0,
+    )
+    del RATE_LIMIT_STORE[oldest_key]
+
+
+@app.middleware("http")
+async def body_size_middleware(request: Request, call_next):
+    """Reject requests whose body exceeds MAX_REQUEST_BODY_BYTES."""
+    content_length = request.headers.get("content-length")
+    if content_length and int(content_length) > MAX_REQUEST_BODY_BYTES:
+        return JSONResponse(
+            status_code=413,
+            content={"error": "Request body too large"},
+        )
+    return await call_next(request)
+
 
 @app.middleware("http")
 async def security_middleware(request: Request, call_next):
+    """
+    Enforce session ID validation and per-session rate limiting.
+
+    Args:
+        request: The incoming HTTP request.
+        call_next: ASGI callable for the next middleware/handler.
+
+    Returns:
+        JSONResponse with 400 if session is invalid, 429 if rate-limited,
+        or the normal response otherwise.
+    """
     # Skip validation for GET /health and CORS preflight OPTIONS
     if (request.method == "GET" and request.url.path == "/health") or request.method == "OPTIONS":
         return await call_next(request)
@@ -109,14 +179,19 @@ async def security_middleware(request: Request, call_next):
     # Rate Limiting
     now = time.time()
     if session_id not in RATE_LIMIT_STORE:
+        # Evict oldest entry if store is full
+        if len(RATE_LIMIT_STORE) >= RATE_LIMIT_MAX_SESSIONS:
+            _evict_oldest_session()
         RATE_LIMIT_STORE[session_id] = []
-    
-    # Clean up old requests
-    RATE_LIMIT_STORE[session_id] = [ts for ts in RATE_LIMIT_STORE[session_id] if now - ts < RATE_LIMIT_WINDOW_SEC]
-    
+
+    # Clean up old requests outside the sliding window
+    RATE_LIMIT_STORE[session_id] = [
+        ts for ts in RATE_LIMIT_STORE[session_id] if now - ts < RATE_LIMIT_WINDOW_SEC
+    ]
+
     if len(RATE_LIMIT_STORE[session_id]) >= RATE_LIMIT_MAX_REQUESTS:
         return JSONResponse(status_code=429, content={"error": "Too many requests, slow down"})
-    
+
     RATE_LIMIT_STORE[session_id].append(now)
 
     response = await call_next(request)
@@ -124,6 +199,12 @@ async def security_middleware(request: Request, call_next):
 
 @app.get("/health")
 async def health():
+    """
+    Health check endpoint — no auth required.
+
+    Returns:
+        dict: status, service name, and version.
+    """
     return {
         "status": "ok",
         "service": "EcoMind API",

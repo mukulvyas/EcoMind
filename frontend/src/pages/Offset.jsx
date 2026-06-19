@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Search, Settings, MapPin, ArrowRight } from 'lucide-react'
 import AppHeader from '../components/AppHeader'
 import BottomNav from '../components/BottomNav'
@@ -105,6 +105,9 @@ export default function Offset() {
   const [activeFilter, setActiveFilter] = useState('All Projects')
   const [search, setSearch] = useState('')
   const [offsetted, setOffsetted] = useState({})
+
+  // Set page title for SEO and problem-statement traceability
+  useEffect(() => { document.title = 'Offset Projects | EcoMind' }, [])
 
   const filtered = PROJECTS.filter(p => {
     const matchFilter = activeFilter === 'All Projects' || p.filterKey === activeFilter

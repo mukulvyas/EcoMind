@@ -119,6 +119,9 @@ export default function Dashboard() {
     fetchPlan()
   }, [fetchPlan])
 
+  // Set page title for SEO and problem-statement traceability
+  useEffect(() => { document.title = 'Dashboard | EcoMind' }, [])
+
   const handleToggleAction = async (actionItem) => {
     if (dbPlan) {
       if (!actionItem.done && !claiming) {
